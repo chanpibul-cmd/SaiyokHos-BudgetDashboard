@@ -76,14 +76,44 @@
           <div class="col-md-3"><div class="card h-100 border-start border-4 border-warning"><div class="card-body"><div class="text-secondary small text-uppercase">ประมาณการรายจ่าย (ทั้งปี)</div><div class="h3 fw-bold text-dark" id="txt-est-exp">-</div></div></div></div>
           <div class="col-md-3"><div class="card h-100 border-start border-4 border-danger"><div class="card-body"><div class="text-secondary small text-uppercase">รายจ่ายจริง (ตามช่วงที่เลือก)</div><div class="h3 fw-bold text-danger" id="txt-act-exp">-</div></div></div></div>
         </div>
+        
         <div class="row mb-4">
           <div class="col-md-6"><div class="card h-100"><div class="card-header">เปรียบเทียบ: ประมาณการ vs ของจริง</div><div class="card-body"><div style="height: 300px; position: relative;"><canvas id="compChart"></canvas></div></div></div></div>
           <div class="col-md-6"><div class="card h-100"><div class="card-header">แนวโน้มรายเดือน</div><div class="card-body"><div style="height: 300px; position: relative;"><canvas id="trendChart"></canvas></div></div></div></div>
         </div>
-        <div class="row">
+
+        <div class="row mb-4">
            <div class="col-md-5"><div class="card h-100"><div class="card-header text-success"><i class="bi bi-pie-chart-fill"></i> สัดส่วนรายรับ</div><div class="card-body"><div style="height: 400px; position: relative;"><canvas id="revGroupChart"></canvas></div></div></div></div>
            <div class="col-md-7"><div class="card h-100"><div class="card-header text-danger"><i class="bi bi-bar-chart-fill"></i> สัดส่วนรายจ่าย</div><div class="card-body"><div style="height: 400px; position: relative;"><canvas id="expGroupChart"></canvas></div></div></div></div>
         </div>
+
+        <div class="card mb-4 border-start border-4 border-secondary">
+          <div class="card-header bg-white fw-bold"><i class="bi bi-trophy-fill text-warning"></i> จัดอันดับ 10 รายการ (ช่วงเดือนที่เลือก)</div>
+          <div class="card-body bg-light">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0"><div class="card-header bg-success text-white small fw-bold">💰 10 อันดับ รายรับมากที่สุด</div><div class="card-body p-0" id="rank-top-rev-amt"></div></div>
+              </div>
+              <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0"><div class="card-header bg-success bg-opacity-75 text-white small fw-bold">📉 10 อันดับ รายรับน้อยที่สุด</div><div class="card-body p-0" id="rank-bot-rev-amt"></div></div>
+              </div>
+              <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0"><div class="card-header bg-success bg-opacity-50 text-dark small fw-bold">🔥 10 อันดับ รายรับ % ภาพรวมมากสุด</div><div class="card-body p-0" id="rank-top-rev-pct"></div></div>
+              </div>
+              
+              <div class="col-md-4 mt-4">
+                <div class="card h-100 shadow-sm border-0"><div class="card-header bg-danger text-white small fw-bold">💸 10 อันดับ รายจ่ายมากที่สุด</div><div class="card-body p-0" id="rank-top-exp-amt"></div></div>
+              </div>
+              <div class="col-md-4 mt-4">
+                <div class="card h-100 shadow-sm border-0"><div class="card-header bg-danger bg-opacity-75 text-white small fw-bold">📉 10 อันดับ รายจ่ายน้อยที่สุด</div><div class="card-body p-0" id="rank-bot-exp-amt"></div></div>
+              </div>
+              <div class="col-md-4 mt-4">
+                <div class="card h-100 shadow-sm border-0"><div class="card-header bg-danger bg-opacity-50 text-dark small fw-bold">🔥 10 อันดับ รายจ่าย % ภาพรวมมากสุด</div><div class="card-body p-0" id="rank-top-exp-pct"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <div class="tab-pane fade" id="revenue-pane">
@@ -113,7 +143,7 @@
     // ==========================================
     // ⚠️ นำ URL ใหม่จากการ Deploy เป็น Web App มาใส่ตรงนี้
     // ==========================================
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwcMLO-kYlmZbB2AWAc6vGpYyqtL5HHH62sbEJXPIJTmPggxwHOPy3un-oPRXKw89hl/exec"; 
+    const WEB_APP_URL = "hhttps://script.google.com/macros/s/AKfycbyGPNYuRzzdoQTWDZOw0nhZK8nqX8PdNxsNX_o-zsY7UQE-9qiHslc8dcQflLTkYNQD/exec"; 
 
     var loadedTabs = { revenue: false, expense: false, projects: false, local: false };
     var chartInstances = {};
@@ -190,6 +220,29 @@
       chartInstances[id] = new Chart(document.getElementById(id).getContext('2d'), config);
     }
 
+    // ฟังก์ชันสร้างตารางจัดอันดับ (Mini Table)
+    function renderMiniRankTable(containerId, dataList, type, textColor) {
+      if(!dataList || dataList.length === 0) {
+        $(containerId).html('<div class="text-center text-muted small p-3">ไม่มีข้อมูลในช่วงเวลานี้</div>');
+        return;
+      }
+      
+      let html = '<div class="table-responsive"><table class="table table-sm table-borderless table-striped small mb-0"><tbody>';
+      dataList.forEach((item, idx) => {
+        let valStr = type === 'pct' ? item.pct.toFixed(1) + '%' : item.act.toLocaleString('th-TH', {minimumFractionDigits: 2});
+        let pColor = type === 'pct' ? (item.pct >= 100 ? 'text-success' : '') : '';
+        html += `
+          <tr>
+            <td class="text-muted text-center" style="width: 30px;">${idx + 1}</td>
+            <td class="text-truncate" style="max-width: 140px;" title="${item.name}">${item.name || '-'}</td>
+            <td class="text-end fw-bold ${textColor} ${pColor}">${valStr}</td>
+          </tr>
+        `;
+      });
+      html += '</tbody></table></div>';
+      $(containerId).html(html);
+    }
+
     function showDashboard(data) {
       $('#loading-overlay').fadeOut();
       const fmt = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2 });
@@ -199,59 +252,28 @@
       $('#txt-act-rev').text(fmt.format(data.actRevenue));
       $('#txt-act-exp').text(fmt.format(data.actExpense));
 
-      renderChart('compChart', {
-        type: 'bar',
-        data: {
-          labels: ['รายรับ', 'รายจ่าย'],
-          datasets: [
-            { label: 'แผน', data: [data.estRevenue, data.estExpense], backgroundColor: '#e2e6ea' },
-            { label: 'จริง', data: [data.actRevenue, data.actExpense], backgroundColor: ['#0d6efd', '#dc3545'] }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+      // วาดกราฟ
+      renderChart('compChart', { type: 'bar', data: { labels: ['รายรับ', 'รายจ่าย'], datasets: [{ label: 'แผน', data: [data.estRevenue, data.estExpense], backgroundColor: '#e2e6ea' }, { label: 'จริง', data: [data.actRevenue, data.actExpense], backgroundColor: ['#0d6efd', '#dc3545'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+      renderChart('revGroupChart', { type: 'bar', data: { labels: data.groups.revenue.map(g => g.name), datasets: [{ label: 'แผน', data: data.groups.revenue.map(g => g.est), backgroundColor: '#e2e6ea' }, { label: 'จริง', data: data.groups.revenue.map(g => g.act), backgroundColor: '#198754' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
+      renderChart('expGroupChart', { type: 'bar', data: { labels: data.groups.expense.map(g => g.name), datasets: [{ label: 'แผน', data: data.groups.expense.map(g => g.est), backgroundColor: '#e2e6ea' }, { label: 'จริง', data: data.groups.expense.map(g => g.act), backgroundColor: '#dc3545' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
 
-      renderChart('revGroupChart', {
-        type: 'bar',
-        data: {
-          labels: data.groups.revenue.map(g => g.name),
-          datasets: [
-            { label: 'แผน', data: data.groups.revenue.map(g => g.est), backgroundColor: '#e2e6ea' },
-            { label: 'จริง', data: data.groups.revenue.map(g => g.act), backgroundColor: '#198754' }
-          ]
-        },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
-      });
-
-      renderChart('expGroupChart', {
-        type: 'bar',
-        data: {
-          labels: data.groups.expense.map(g => g.name),
-          datasets: [
-            { label: 'แผน', data: data.groups.expense.map(g => g.est), backgroundColor: '#e2e6ea' },
-            { label: 'จริง', data: data.groups.expense.map(g => g.act), backgroundColor: '#dc3545' }
-          ]
-        },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
-      });
+      // แสดงตารางจัดอันดับทั้ง 6 กล่อง
+      if(data.rankings) {
+        renderMiniRankTable('#rank-top-rev-amt', data.rankings.topRevAmt, 'amt', 'text-success');
+        renderMiniRankTable('#rank-bot-rev-amt', data.rankings.botRevAmt, 'amt', 'text-success');
+        renderMiniRankTable('#rank-top-rev-pct', data.rankings.topRevPct, 'pct', 'text-dark');
+        
+        renderMiniRankTable('#rank-top-exp-amt', data.rankings.topExpAmt, 'amt', 'text-danger');
+        renderMiniRankTable('#rank-bot-exp-amt', data.rankings.botExpAmt, 'amt', 'text-danger');
+        renderMiniRankTable('#rank-top-exp-pct', data.rankings.topExpPct, 'pct', 'text-dark');
+      }
     }
 
-    // กราฟแท่งคู่
     function updateTrendChart(chartData) {
       renderChart('trendChart', {
         type: 'bar',
-        data: {
-          labels: chartData.months,
-          datasets: [
-            { label: 'รายรับ', data: chartData.income, backgroundColor: '#0d6efd' },
-            { label: 'รายจ่าย', data: chartData.expense, backgroundColor: '#dc3545' }
-          ]
-        },
-        options: { 
-          responsive: true, 
-          maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true } }
-        }
+        data: { labels: chartData.months, datasets: [{ label: 'รายรับ', data: chartData.income, backgroundColor: '#0d6efd' }, { label: 'รายจ่าย', data: chartData.expense, backgroundColor: '#dc3545' }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
       });
     }
 
@@ -283,7 +305,7 @@
           ];
           response.months.forEach((m, idx) => { columnsDef.push({ title: m, data: idx + 3 }); });
           createItemChart(type + 'Chart', response.data, type);
-          response = response.data; // แกะเอาเฉพาะ array ข้อมูลไปใส่ datatable
+          response = response.data;
         } 
         else if (type === 'projects') {
           columnsDef = [
