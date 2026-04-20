@@ -88,7 +88,7 @@
         </div>
 
         <div class="card mb-4 border-start border-4 border-secondary">
-          <div class="card-header bg-white fw-bold"><i class="bi bi-trophy-fill text-warning"></i> จัดอันดับ 10 รายการ (ช่วงเดือนที่เลือก)</div>
+          <div class="card-header bg-white fw-bold"><i class="bi bi-trophy-fill text-warning"></i> จัดอันดับ 10 รายการ (ช่วงเดือนที่เลือกเทียบกับแผน)</div>
           <div class="card-body bg-light">
             <div class="row g-3">
               <div class="col-md-4">
@@ -140,17 +140,13 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
-    // ==========================================
-    // ⚠️ นำ URL ใหม่จากการ Deploy เป็น Web App มาใส่ตรงนี้
-    // ==========================================
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzUPFXfudHi1DNLTIzJOQtA8hfVjH4HTyVRE9-KDiVopZZ2UaZ7bJ3FZQgZteOYO8UK/exec"; 
+
+   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzUPFXfudHi1DNLTIzJOQtA8hfVjH4HTyVRE9-KDiVopZZ2UaZ7bJ3FZQgZteOYO8UK/exec"; 
 
     var loadedTabs = { revenue: false, expense: false, projects: false, local: false };
     var chartInstances = {};
 
-    $(document).ready(function() {
-      refreshData();
-    });
+    $(document).ready(function() { refreshData(); });
 
     function fetchAPI(action, params, callback) {
       $('#loading-overlay').fadeIn();
@@ -158,21 +154,12 @@
       if (params) url += "&" + params;
       
       $.ajax({
-        url: url,
-        method: "GET",
-        dataType: "json",
+        url: url, method: "GET", dataType: "json",
         success: function(response) {
-          if (response.error) {
-            alert("Error: " + response.error);
-            $('#loading-overlay').fadeOut();
-          } else {
-            callback(response);
-          }
+          if (response.error) { alert("Error: " + response.error); $('#loading-overlay').fadeOut(); } 
+          else { callback(response); }
         },
-        error: function() {
-          alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
-          $('#loading-overlay').fadeOut();
-        }
+        error: function() { alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้"); $('#loading-overlay').fadeOut(); }
       });
     }
 
@@ -205,14 +192,7 @@
       let pct = 0;
       if (est > 0) pct = (act / est) * 100;
       if (pct > 100) pct = 100;
-      return `
-        <div class="d-flex align-items-center">
-          <div class="progress flex-grow-1 me-2" style="height: 8px;">
-            <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${pct}%;"></div>
-          </div>
-          <span style="font-size: 0.8rem; width: 40px;">${pct.toFixed(1)}%</span>
-        </div>
-      `;
+      return `<div class="d-flex align-items-center"><div class="progress flex-grow-1 me-2" style="height: 8px;"><div class="progress-bar ${colorClass}" role="progressbar" style="width: ${pct}%;"></div></div><span style="font-size: 0.8rem; width: 40px;">${pct.toFixed(1)}%</span></div>`;
     }
 
     function renderChart(id, config) {
@@ -220,26 +200,50 @@
       chartInstances[id] = new Chart(document.getElementById(id).getContext('2d'), config);
     }
 
-    // ฟังก์ชันสร้างตารางจัดอันดับ (Mini Table)
-    function renderMiniRankTable(containerId, dataList, type, textColor) {
+    // ฟังก์ชันสร้างกล่องจัดอันดับ (อัปเดตใหม่ ให้เทียบแผน และมี Progress Bar)
+    function renderMiniRankTable(containerId, dataList, type, textColor, bgColor) {
       if(!dataList || dataList.length === 0) {
-        $(containerId).html('<div class="text-center text-muted small p-3">ไม่มีข้อมูลในช่วงเวลานี้</div>');
+        $(containerId).html('<div class="text-center text-muted small p-4">ไม่มีข้อมูลในช่วงเวลานี้</div>');
         return;
       }
       
-      let html = '<div class="table-responsive"><table class="table table-sm table-borderless table-striped small mb-0"><tbody>';
+      let html = '<ul class="list-group list-group-flush">';
       dataList.forEach((item, idx) => {
-        let valStr = type === 'pct' ? item.pct.toFixed(1) + '%' : item.act.toLocaleString('th-TH', {minimumFractionDigits: 2});
-        let pColor = type === 'pct' ? (item.pct >= 100 ? 'text-success' : '') : '';
+        let actStr = item.act.toLocaleString('th-TH', {minimumFractionDigits: 2});
+        let estStr = item.est.toLocaleString('th-TH', {minimumFractionDigits: 2});
+        let pctStr = item.pct.toFixed(1) + '%';
+        let barPct = item.pct > 100 ? 100 : item.pct;
+        
+        let mainVal = type === 'pct' ? pctStr : actStr;
+        
+        // จัดข้อความย่อยให้เห็นชัดเจนว่ารับ/จ่ายจริงเท่าไหร่ และแผนเท่าไหร่
+        let subVal = type === 'pct' 
+          ? `<span class="text-muted">จ: ${actStr} | ผ: ${estStr}</span>` 
+          : `<span class="text-muted">แผน: ${estStr}</span>`;
+          
+        let badge = type === 'amt' 
+          ? `<span style="font-size:0.65rem;" class="badge bg-light text-secondary border">${pctStr}</span>` 
+          : '';
+
         html += `
-          <tr>
-            <td class="text-muted text-center" style="width: 30px;">${idx + 1}</td>
-            <td class="text-truncate" style="max-width: 140px;" title="${item.name}">${item.name || '-'}</td>
-            <td class="text-end fw-bold ${textColor} ${pColor}">${valStr}</td>
-          </tr>
+          <li class="list-group-item px-3 py-2" style="font-size: 0.85rem;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <div class="text-truncate fw-bold text-secondary" style="max-width: 65%;" title="${item.name}">
+                <span class="text-muted me-1">${idx + 1}.</span>${item.name || '-'}
+              </div>
+              <div class="text-end fw-bold ${textColor}">${mainVal}</div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
+              <div class="text-truncate" style="max-width: 75%;">${subVal}</div>
+              <div class="text-end">${badge}</div>
+            </div>
+            <div class="progress mt-1" style="height: 5px; background-color: #e9ecef;">
+              <div class="progress-bar ${bgColor}" role="progressbar" style="width: ${barPct}%"></div>
+            </div>
+          </li>
         `;
       });
-      html += '</tbody></table></div>';
+      html += '</ul>';
       $(containerId).html(html);
     }
 
@@ -252,34 +256,28 @@
       $('#txt-act-rev').text(fmt.format(data.actRevenue));
       $('#txt-act-exp').text(fmt.format(data.actExpense));
 
-      // วาดกราฟ
       renderChart('compChart', { type: 'bar', data: { labels: ['รายรับ', 'รายจ่าย'], datasets: [{ label: 'แผน', data: [data.estRevenue, data.estExpense], backgroundColor: '#e2e6ea' }, { label: 'จริง', data: [data.actRevenue, data.actExpense], backgroundColor: ['#0d6efd', '#dc3545'] }] }, options: { responsive: true, maintainAspectRatio: false } });
       renderChart('revGroupChart', { type: 'bar', data: { labels: data.groups.revenue.map(g => g.name), datasets: [{ label: 'แผน', data: data.groups.revenue.map(g => g.est), backgroundColor: '#e2e6ea' }, { label: 'จริง', data: data.groups.revenue.map(g => g.act), backgroundColor: '#198754' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
       renderChart('expGroupChart', { type: 'bar', data: { labels: data.groups.expense.map(g => g.name), datasets: [{ label: 'แผน', data: data.groups.expense.map(g => g.est), backgroundColor: '#e2e6ea' }, { label: 'จริง', data: data.groups.expense.map(g => g.act), backgroundColor: '#dc3545' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
 
-      // แสดงตารางจัดอันดับทั้ง 6 กล่อง
+      // ดึงข้อมูลมาสร้าง List จัดอันดับ
       if(data.rankings) {
-        renderMiniRankTable('#rank-top-rev-amt', data.rankings.topRevAmt, 'amt', 'text-success');
-        renderMiniRankTable('#rank-bot-rev-amt', data.rankings.botRevAmt, 'amt', 'text-success');
-        renderMiniRankTable('#rank-top-rev-pct', data.rankings.topRevPct, 'pct', 'text-dark');
+        renderMiniRankTable('#rank-top-rev-amt', data.rankings.topRevAmt, 'amt', 'text-success', 'bg-success');
+        renderMiniRankTable('#rank-bot-rev-amt', data.rankings.botRevAmt, 'amt', 'text-success', 'bg-success');
+        renderMiniRankTable('#rank-top-rev-pct', data.rankings.topRevPct, 'pct', 'text-success', 'bg-success');
         
-        renderMiniRankTable('#rank-top-exp-amt', data.rankings.topExpAmt, 'amt', 'text-danger');
-        renderMiniRankTable('#rank-bot-exp-amt', data.rankings.botExpAmt, 'amt', 'text-danger');
-        renderMiniRankTable('#rank-top-exp-pct', data.rankings.topExpPct, 'pct', 'text-dark');
+        renderMiniRankTable('#rank-top-exp-amt', data.rankings.topExpAmt, 'amt', 'text-danger', 'bg-danger');
+        renderMiniRankTable('#rank-bot-exp-amt', data.rankings.botExpAmt, 'amt', 'text-danger', 'bg-danger');
+        renderMiniRankTable('#rank-top-exp-pct', data.rankings.topExpPct, 'pct', 'text-danger', 'bg-danger');
       }
     }
 
     function updateTrendChart(chartData) {
-      renderChart('trendChart', {
-        type: 'bar',
-        data: { labels: chartData.months, datasets: [{ label: 'รายรับ', data: chartData.income, backgroundColor: '#0d6efd' }, { label: 'รายจ่าย', data: chartData.expense, backgroundColor: '#dc3545' }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-      });
+      renderChart('trendChart', { type: 'bar', data: { labels: chartData.months, datasets: [{ label: 'รายรับ', data: chartData.income, backgroundColor: '#0d6efd' }, { label: 'รายจ่าย', data: chartData.expense, backgroundColor: '#dc3545' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
     }
 
     window.loadTab = function(type) {
       if (loadedTabs[type]) return;
-      
       let actionName = '';
       if (type === 'revenue') actionName = 'getTableRevenue';
       else if (type === 'expense') actionName = 'getTableExpense';
@@ -287,80 +285,26 @@
       else if (type === 'local') actionName = 'getTableLocalProjects';
 
       fetchAPI(actionName, null, function(response) {
-        let columnsDef = [];
-        let tableId = '#table-' + type;
-        
+        let columnsDef = []; let tableId = '#table-' + type;
         if (type === 'revenue' || type === 'expense') {
           let progressColor = type === 'revenue' ? 'bg-success' : 'bg-danger';
-          columnsDef = [
-            { title: "ลำดับ", data: 0 }, { title: "รายการ", data: 1 }, { title: "งบประมาณ", data: 2 },
-            { 
-              title: "ความคืบหน้า", className: "progress-cell",
-              render: function(d, t, row) {
-                let est = parseMoney(row[2]), act = 0;
-                for(let i=3; i<row.length; i++) act += parseMoney(row[i]);
-                return renderProgress(act, est, progressColor);
-              }
-            }
-          ];
+          columnsDef = [ { title: "ลำดับ", data: 0 }, { title: "รายการ", data: 1 }, { title: "งบประมาณ", data: 2 }, { title: "ความคืบหน้า", className: "progress-cell", render: function(d, t, row) { let est = parseMoney(row[2]), act = 0; for(let i=3; i<row.length; i++) act += parseMoney(row[i]); return renderProgress(act, est, progressColor); } } ];
           response.months.forEach((m, idx) => { columnsDef.push({ title: m, data: idx + 3 }); });
-          createItemChart(type + 'Chart', response.data, type);
-          response = response.data;
+          createItemChart(type + 'Chart', response.data, type); response = response.data;
         } 
-        else if (type === 'projects') {
-          columnsDef = [
-            { title: "ลำดับที่ (A)", data: 0 }, { title: "ชื่อแผนงาน/โครงการ (B)", data: 1, width: "25%" },
-            { title: "จำนวนเงิน (C)", data: 2 }, { title: "ผู้รับผิดชอบ (D)", data: 3 }, { title: "เบิกจ่ายแล้ว (E)", data: 4 },
-            { title: "ความคืบหน้า", render: function(d, t, row) { return renderProgress(parseMoney(row[4]), parseMoney(row[2]), "bg-warning"); } },
-            { title: "วันที่จ่าย (F)", data: 5 }, { title: "หมายเหตุ (G)", data: 6 }
-          ];
-        } 
-        else if (type === 'local') {
-          columnsDef = [
-            { title: "ที่", data: 0 }, { title: "ชื่อโครงการ", data: 1, width: "30%" },
-            { title: "งบประมาณ", data: 2 }, { title: "เบิกจ่ายแล้ว", data: 3 },
-            { title: "% การเบิก", className: "progress-cell", render: function(d, t, row) { return renderProgress(parseMoney(row[3]), parseMoney(row[2]), "bg-info"); } },
-            { title: "แหล่งงบ", data: 4 }, { title: "ผู้รับผิดชอบ", data: 5 }
-          ];
-        }
+        else if (type === 'projects') { columnsDef = [ { title: "ลำดับที่ (A)", data: 0 }, { title: "ชื่อแผนงาน/โครงการ (B)", data: 1, width: "25%" }, { title: "จำนวนเงิน (C)", data: 2 }, { title: "ผู้รับผิดชอบ (D)", data: 3 }, { title: "เบิกจ่ายแล้ว (E)", data: 4 }, { title: "ความคืบหน้า", render: function(d, t, row) { return renderProgress(parseMoney(row[4]), parseMoney(row[2]), "bg-warning"); } }, { title: "วันที่จ่าย (F)", data: 5 }, { title: "หมายเหตุ (G)", data: 6 } ]; } 
+        else if (type === 'local') { columnsDef = [ { title: "ที่", data: 0 }, { title: "ชื่อโครงการ", data: 1, width: "30%" }, { title: "งบประมาณ", data: 2 }, { title: "เบิกจ่ายแล้ว", data: 3 }, { title: "% การเบิก", className: "progress-cell", render: function(d, t, row) { return renderProgress(parseMoney(row[3]), parseMoney(row[2]), "bg-info"); } }, { title: "แหล่งงบ", data: 4 }, { title: "ผู้รับผิดชอบ", data: 5 } ]; }
 
-        if ($.fn.DataTable.isDataTable(tableId)) {
-          $(tableId).DataTable().clear().destroy();
-          $(tableId).empty();
-        }
-
-        $(tableId).DataTable({
-          data: response,
-          columns: columnsDef,
-          language: { search: "ค้นหา:", lengthMenu: "โชว์ _MENU_", info: "ข้อมูล _START_-_END_ จาก _TOTAL_", paginate: { next: ">", previous: "<" } },
-          pageLength: 10, scrollX: true, autoWidth: false
-        });
-        
-        loadedTabs[type] = true;
-        $('#loading-overlay').fadeOut();
+        if ($.fn.DataTable.isDataTable(tableId)) { $(tableId).DataTable().clear().destroy(); $(tableId).empty(); }
+        $(tableId).DataTable({ data: response, columns: columnsDef, language: { search: "ค้นหา:", lengthMenu: "โชว์ _MENU_", info: "ข้อมูล _START_-_END_ จาก _TOTAL_", paginate: { next: ">", previous: "<" } }, pageLength: 10, scrollX: true, autoWidth: false });
+        loadedTabs[type] = true; $('#loading-overlay').fadeOut();
       });
     }
 
     function createItemChart(canvasId, rows, type) {
-      let items = rows.map(r => {
-        let name = r[1] || "", est = parseMoney(r[2]), act = 0;
-        for(let i=3; i<r.length; i++) act += parseMoney(r[i]); 
-        return { name, est, act };
-      }).filter(i => i.name && (i.est > 0 || i.act > 0)).sort((a, b) => b.est - a.est).slice(0, 20);
-
+      let items = rows.map(r => { let name = r[1] || "", est = parseMoney(r[2]), act = 0; for(let i=3; i<r.length; i++) act += parseMoney(r[i]); return { name, est, act }; }).filter(i => i.name && (i.est > 0 || i.act > 0)).sort((a, b) => b.est - a.est).slice(0, 20);
       document.getElementById(canvasId).parentNode.style.height = Math.max(400, items.length * 40) + 'px';
-
-      renderChart(canvasId, {
-        type: 'bar',
-        data: {
-          labels: items.map(i => i.name.length > 25 ? i.name.substring(0, 25) + '...' : i.name),
-          datasets: [
-             { label: 'แผน', data: items.map(i => i.est), backgroundColor: '#e2e6ea', barPercentage: 0.7 },
-             { label: 'จริง', data: items.map(i => i.act), backgroundColor: type==='revenue'?'#198754':'#dc3545', barPercentage: 0.7 }
-          ]
-        },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
-      });
+      renderChart(canvasId, { type: 'bar', data: { labels: items.map(i => i.name.length > 25 ? i.name.substring(0, 25) + '...' : i.name), datasets: [ { label: 'แผน', data: items.map(i => i.est), backgroundColor: '#e2e6ea', barPercentage: 0.7 }, { label: 'จริง', data: items.map(i => i.act), backgroundColor: type==='revenue'?'#198754':'#dc3545', barPercentage: 0.7 } ] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
     }
   </script>
 </body>
