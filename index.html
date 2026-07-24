@@ -256,10 +256,85 @@
       $('#txt-act-rev').text(fmt.format(data.actRevenue));
       $('#txt-act-exp').text(fmt.format(data.actExpense));
 
-      renderChart('compChart', { type: 'bar', data: { labels: ['รายรับ', 'รายจ่าย'], datasets: [{ label: 'แผน', data: [data.estRevenue, data.estExpense], backgroundColor: '#e2e6ea' }, { label: 'จริง', data: [data.actRevenue, data.actExpense], backgroundColor: ['#0d6efd', '#dc3545'] }] }, options: { responsive: true, maintainAspectRatio: false } });
-      renderChart('revGroupChart', { type: 'bar', data: { labels: data.groups.revenue.map(g => g.name), datasets: [{ label: 'แผน', data: data.groups.revenue.map(g => g.est), backgroundColor: '#e2e6ea' }, { label: 'จริง', data: data.groups.revenue.map(g => g.act), backgroundColor: '#198754' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
-      renderChart('expGroupChart', { type: 'bar', data: { labels: data.groups.expense.map(g => g.name), datasets: [{ label: 'แผน', data: data.groups.expense.map(g => g.est), backgroundColor: '#e2e6ea' }, { label: 'จริง', data: data.groups.expense.map(g => g.act), backgroundColor: '#dc3545' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
+      // 1. กราฟเปรียบเทียบ: ประมาณการ vs ของจริง (แนวตั้ง)
+      renderChart('compChart', { 
+        type: 'bar', 
+        data: { 
+          labels: ['รายรับ', 'รายจ่าย'], 
+          datasets: [
+            { label: 'แผน', data: [data.estRevenue, data.estExpense], backgroundColor: '#e2e6ea' }, 
+            { label: 'จริง', data: [data.actRevenue, data.actExpense], backgroundColor: ['#0d6efd', '#dc3545'] }
+          ] 
+        }, 
+        plugins: [ChartDataLabels],
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          layout: { padding: { top: 30 } }, // เว้นที่ด้านบนให้ตัวเลข
+          plugins: {
+            datalabels: {
+              anchor: 'end', align: 'top', // วางตัวเลขไว้บนสุดของแท่ง
+              formatter: value => value === 0 ? "" : value.toLocaleString('th-TH', { maximumFractionDigits: 0 }),
+              font: { size: 11, family: "'Sarabun', sans-serif" },
+              color: '#495057'
+            }
+          }
+        } 
+      });
 
+      // 2. กราฟสัดส่วนรายรับ (แนวนอน)
+      renderChart('revGroupChart', { 
+        type: 'bar', 
+        data: { 
+          labels: data.groups.revenue.map(g => g.name), 
+          datasets: [
+            { label: 'แผน', data: data.groups.revenue.map(g => g.est), backgroundColor: '#e2e6ea' }, 
+            { label: 'จริง', data: data.groups.revenue.map(g => g.act), backgroundColor: '#198754' }
+          ] 
+        }, 
+        plugins: [ChartDataLabels],
+        options: { 
+          indexAxis: 'y', 
+          responsive: true, 
+          maintainAspectRatio: false,
+          layout: { padding: { right: 60 } }, // เว้นที่ด้านขวาให้ตัวเลข
+          plugins: {
+            datalabels: {
+              anchor: 'end', align: 'right', // วางตัวเลขไว้ขวาสุดของแท่ง
+              formatter: value => value === 0 ? "" : value.toLocaleString('th-TH', { maximumFractionDigits: 0 }),
+              font: { size: 11, family: "'Sarabun', sans-serif" },
+              color: '#495057'
+            }
+          }
+        } 
+      });
+
+      // 3. กราฟสัดส่วนรายจ่าย (แนวนอน)
+      renderChart('expGroupChart', { 
+        type: 'bar', 
+        data: { 
+          labels: data.groups.expense.map(g => g.name), 
+          datasets: [
+            { label: 'แผน', data: data.groups.expense.map(g => g.est), backgroundColor: '#e2e6ea' }, 
+            { label: 'จริง', data: data.groups.expense.map(g => g.act), backgroundColor: '#dc3545' }
+          ] 
+        }, 
+        plugins: [ChartDataLabels],
+        options: { 
+          indexAxis: 'y', 
+          responsive: true, 
+          maintainAspectRatio: false,
+          layout: { padding: { right: 60 } }, // เว้นที่ด้านขวาให้ตัวเลข
+          plugins: {
+            datalabels: {
+              anchor: 'end', align: 'right', // วางตัวเลขไว้ขวาสุดของแท่ง
+              formatter: value => value === 0 ? "" : value.toLocaleString('th-TH', { maximumFractionDigits: 0 }),
+              font: { size: 11, family: "'Sarabun', sans-serif" },
+              color: '#495057'
+            }
+          }
+        } 
+      });
       // ดึงข้อมูลมาสร้าง List จัดอันดับ
       if(data.rankings) {
         renderMiniRankTable('#rank-top-rev-amt', data.rankings.topRevAmt, 'amt', 'text-success', 'bg-success');
@@ -273,7 +348,31 @@
     }
 
     function updateTrendChart(chartData) {
-      renderChart('trendChart', { type: 'bar', data: { labels: chartData.months, datasets: [{ label: 'รายรับ', data: chartData.income, backgroundColor: '#0d6efd' }, { label: 'รายจ่าย', data: chartData.expense, backgroundColor: '#dc3545' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+      renderChart('trendChart', { 
+        type: 'bar', 
+        data: { 
+          labels: chartData.months, 
+          datasets: [
+            { label: 'รายรับ', data: chartData.income, backgroundColor: '#0d6efd' }, 
+            { label: 'รายจ่าย', data: chartData.expense, backgroundColor: '#dc3545' }
+          ] 
+        }, 
+        plugins: [ChartDataLabels],
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false, 
+          layout: { padding: { top: 30 } }, // เว้นที่ด้านบนให้ตัวเลข
+          scales: { y: { beginAtZero: true } },
+          plugins: {
+            datalabels: {
+              anchor: 'end', align: 'top', // วางตัวเลขไว้บนสุดของแท่ง
+              formatter: value => value === 0 ? "" : value.toLocaleString('th-TH', { maximumFractionDigits: 0 }),
+              font: { size: 10, family: "'Sarabun', sans-serif" }, // ใช้ฟอนต์เล็กลงนิดหน่อยเพราะแท่งอาจจะเบียดกัน
+              color: '#495057'
+            }
+          }
+        } 
+      });
     }
 
     window.loadTab = function(type) {
