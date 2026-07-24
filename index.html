@@ -9,8 +9,6 @@
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
-  
-
 
   <style>
     body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; font-size: 0.95rem; }
@@ -140,8 +138,7 @@
   <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  
+
   <script>
 
    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwVnuvuteKTZKOW208G9l6GE3r4fNeUOrpf4FyQL5SLmK7k5Xt1k5A4-D4zRKKFG9Py/exec"; 
@@ -291,47 +288,10 @@
         let columnsDef = []; let tableId = '#table-' + type;
         if (type === 'revenue' || type === 'expense') {
           let progressColor = type === 'revenue' ? 'bg-success' : 'bg-danger';
-          columnsDef = [ 
-            { title: "ลำดับ", data: 0 }, 
-            { title: "รายการ", data: 1 }, 
-            { 
-              title: "งบประมาณ", 
-              render: function(d, t, row) { 
-                return parseMoney(row[2]).toLocaleString('th-TH', {minimumFractionDigits: 2}); 
-              } 
-            }, 
-            { 
-              title: "รวม", 
-              render: function(d, t, row) { 
-                let act = 0; 
-                for(let i=3; i<row.length; i++) act += parseMoney(row[i]); 
-                return act.toLocaleString('th-TH', {minimumFractionDigits: 2}); 
-              } 
-            },
-            { 
-              title: "ความคืบหน้า", 
-              className: "progress-cell", 
-              render: function(d, t, row) { 
-                let est = parseMoney(row[2]), act = 0; 
-                for(let i=3; i<row.length; i++) act += parseMoney(row[i]); 
-                return renderProgress(act, est, progressColor); 
-              } 
-            } 
-          ];
-          
-          response.months.forEach((m, idx) => { 
-            columnsDef.push({ 
-              title: m, 
-              render: function(d, t, row) {
-                let val = parseMoney(row[idx+3]);
-                return val === 0 ? "-" : val.toLocaleString('th-TH', {minimumFractionDigits: 2});
-              } 
-            }); 
-          });
-          
-          createItemChart(type + 'Chart', response.data, type); 
-          response = response.data;
-        }
+          columnsDef = [ { title: "ลำดับ", data: 0 }, { title: "รายการ", data: 1 }, { title: "งบประมาณ", data: 2 }, { title: "ความคืบหน้า", className: "progress-cell", render: function(d, t, row) { let est = parseMoney(row[2]), act = 0; for(let i=3; i<row.length; i++) act += parseMoney(row[i]); return renderProgress(act, est, progressColor); } } ];
+          response.months.forEach((m, idx) => { columnsDef.push({ title: m, data: idx + 3 }); });
+          createItemChart(type + 'Chart', response.data, type); response = response.data;
+        } 
         else if (type === 'projects') { columnsDef = [ { title: "ลำดับที่ (A)", data: 0 }, { title: "ชื่อแผนงาน/โครงการ (B)", data: 1, width: "25%" }, { title: "จำนวนเงิน (C)", data: 2 }, { title: "ผู้รับผิดชอบ (D)", data: 3 }, { title: "เบิกจ่ายแล้ว (E)", data: 4 }, { title: "ความคืบหน้า", render: function(d, t, row) { return renderProgress(parseMoney(row[4]), parseMoney(row[2]), "bg-warning"); } }, { title: "วันที่จ่าย (F)", data: 5 }, { title: "หมายเหตุ (G)", data: 6 } ]; } 
         else if (type === 'local') { columnsDef = [ { title: "ที่", data: 0 }, { title: "ชื่อโครงการ", data: 1, width: "30%" }, { title: "งบประมาณ", data: 2 }, { title: "เบิกจ่ายแล้ว", data: 3 }, { title: "% การเบิก", className: "progress-cell", render: function(d, t, row) { return renderProgress(parseMoney(row[3]), parseMoney(row[2]), "bg-info"); } }, { title: "แหล่งงบ", data: 4 }, { title: "ผู้รับผิดชอบ", data: 5 } ]; }
 
@@ -342,44 +302,9 @@
     }
 
     function createItemChart(canvasId, rows, type) {
-      let items = rows.map(r => { 
-        let name = r[1] || "", est = parseMoney(r[2]), act = 0; 
-        for(let i=3; i<r.length; i++) act += parseMoney(r[i]); 
-        return { name, est, act }; 
-      }).filter(i => i.name && (i.est > 0 || i.act > 0)).sort((a, b) => b.est - a.est).slice(0, 20);
-      
+      let items = rows.map(r => { let name = r[1] || "", est = parseMoney(r[2]), act = 0; for(let i=3; i<r.length; i++) act += parseMoney(r[i]); return { name, est, act }; }).filter(i => i.name && (i.est > 0 || i.act > 0)).sort((a, b) => b.est - a.est).slice(0, 20);
       document.getElementById(canvasId).parentNode.style.height = Math.max(400, items.length * 40) + 'px';
-      
-      renderChart(canvasId, { 
-        type: 'bar', 
-        data: { 
-          labels: items.map(i => i.name.length > 25 ? i.name.substring(0, 25) + '...' : i.name), 
-          datasets: [ 
-            { label: 'แผน', data: items.map(i => i.est), backgroundColor: '#e2e6ea', barPercentage: 0.7 }, 
-            { label: 'จริง', data: items.map(i => i.act), backgroundColor: type==='revenue'?'#198754':'#dc3545', barPercentage: 0.7 } 
-          ] 
-        }, 
-        plugins: [ChartDataLabels],
-        options: { 
-          indexAxis: 'y', 
-          responsive: true, 
-          maintainAspectRatio: false, 
-          layout: {
-            padding: { right: 60 } // เว้นที่ว่างด้านขวาให้ตัวเลขไม่ตกขอบ
-          },
-          plugins: {
-            datalabels: {
-              anchor: 'end',
-              align: 'right',
-              formatter: function(value) {
-                return value === 0 ? "" : value.toLocaleString('th-TH', { maximumFractionDigits: 0 });
-              },
-              font: { size: 11, family: "'Sarabun', sans-serif" },
-              color: '#495057'
-            }
-          }
-        } 
-      });
+      renderChart(canvasId, { type: 'bar', data: { labels: items.map(i => i.name.length > 25 ? i.name.substring(0, 25) + '...' : i.name), datasets: [ { label: 'แผน', data: items.map(i => i.est), backgroundColor: '#e2e6ea', barPercentage: 0.7 }, { label: 'จริง', data: items.map(i => i.act), backgroundColor: type==='revenue'?'#198754':'#dc3545', barPercentage: 0.7 } ] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
     }
   </script>
 </body>
